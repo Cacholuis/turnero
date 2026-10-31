@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from pydantic import BaseModel
+import os
 from app.database import SessionLocal
 from app.models import Turno, Paciente, Medico, HorarioAtencion
 from app.whatsapp_service import enviar_notificacion_turno
@@ -325,4 +327,52 @@ def reservar_turno(paciente_id: int, medico_id: int, fecha: str, db: Session = D
     return {
         "ok": True,
         "mensaje": mensaje_confirmacion
+    }
+
+
+# ============================================================
+# NOTIFICAR EMERGENCIA
+# ============================================================
+class EmergenciaRequest(BaseModel):
+    paciente_jid: str
+    numero_telefono: str
+    motivo: str
+    timestamp: str
+
+
+@router.post("/emergencias/notificar")
+def notificar_emergencia(datos: EmergenciaRequest, db: Session = Depends(get_db)):
+    print(f"\n{'='*60}")
+    print(f"🚨 SOLICITUD DE CONTACTO URGENTE")
+    print(f"{'='*60}")
+    print(f"Número del paciente: {datos.numero_telefono}")
+    print(f"Motivo: {datos.motivo}")
+    print(f"Hora: {datos.timestamp}")
+    print(f"{'='*60}\n")
+    
+    try:
+        numero_hospital = os.getenv('TO_WHATSAPP')
+        if numero_hospital:
+            lineas = []
+            lineas.append("🚨 *SOLICITUD DE ATENCIÓN URGENTE*")
+            lineas.append("")
+            lineas.append("Un paciente necesita que lo contacten:")
+            lineas.append("")
+            lineas.append(f"📞 Teléfono: {datos.numero_telefono}")
+            lineas.append(f"📝 Motivo: {datos.motivo}")
+            lineas.append(f"🕐 Hora: {datos.timestamp}")
+            lineas.append("")
+            lineas.append("Por favor, contactate con el paciente a la brevedad.")
+            mensaje = "\n".join(lineas)
+            
+            enviar_notificacion_turno(numero_hospital, mensaje)
+            print(f"✅ Notificación enviada al hospital: {numero_hospital}")
+        else:
+            print("⚠️ No se encontró TO_WHATSAPP en .env")
+    except Exception as e:
+        print(f"❌ Error al notificar al hospital: {e}")
+    
+    return {
+        "ok": True,
+        "mensaje": "Solicitud notificada al hospital"
     }

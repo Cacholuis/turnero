@@ -13,3 +13,12 @@ __pycache__/
 # Windows
 Thumbs.db
 desktop.ini
+
+# WhatsApp Baileys
+PUENTE_WHATSAPP/auth_info_baileys/
+
+# Node
+PUENTE_WHATSAPP/node_modules/
+
+# Variables de entorno
+.env
